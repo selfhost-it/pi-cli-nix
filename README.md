@@ -97,15 +97,17 @@ nix run .
 1. Change `version` in `package.nix` (e.g. `"0.80.11"`).
 2. Set `hash = "";` and run `nix build .` — it fails and prints the correct hash. Paste it back.
 3. Set `npmDepsHash = "";` and run `nix build .` — again paste the hash from the error.
-4. Run `nix build .` again — it should succeed.
-5. Verify `./result/bin/pi --version`, then commit and push.
+4. Update the `modelData` hash: `curl -s "https://registry.npmjs.org/@earendil-works/pi-ai/<VERSION>" | jq -r .dist.integrity` and paste the `sha512-...` value into `modelData.hash` (its URL tracks `version` automatically).
+5. Run `nix build .` again — it should succeed.
+6. Verify `./result/bin/pi --version`, then commit and push.
 
 The autonomous workflow `./update.sh` performs all of these steps using Claude Code.
 
 ## Technical Details
 
 - **Source**: Built from the [earendil-works/pi](https://github.com/earendil-works/pi) GitHub repo (tag `v<VERSION>`).
-- **Builder**: `buildNpmPackage` running the root `build` script, which compiles the workspace packages in order (`tui → ai → agent → coding-agent → orchestrator`) with `tsgo`.
+- **Builder**: `buildNpmPackage` running the root `build:offline` script, which compiles the workspace packages in order (`tui → ai → agent → storage/sqlite-node → coding-agent → server`) with `tsgo`, without touching the network.
+- **Model catalog**: since 0.81.x upstream no longer commits the per-provider model data (`packages/ai/src/providers/data/`) to git; it is normally hydrated from live APIs at build time. We instead vendor the npm-published `@earendil-works/pi-ai` tarball of the same version (fixed-output `fetchurl`) and restore its `dist/providers/data` before the build. The build's own `check:model-data` step verifies the vendored data against the committed structure and manifest hashes.
 - **Runtime**: Node.js 22 (upstream `engines.node` is `>=22.19.0`).
 - **Not bundled**: `pi` (`packages/coding-agent/dist/cli.js`) imports sibling workspace packages (`@earendil-works/pi-ai`, `pi-tui`, `pi-agent-core`) at runtime. A custom `installPhase` copies the built tree with its relative workspace symlinks intact (`cp -a`) and exposes `bin/pi` via `makeWrapper node --add-flags cli.js`.
 - **Native/asset deps**: `@silvia-odwyer/photon-node` ships a `.wasm` (portable, no compilation). On Linux the prebuilt `tsgo` build tool is patched with `autoPatchelfHook`.

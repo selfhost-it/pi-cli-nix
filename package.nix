@@ -2,6 +2,7 @@
 , stdenv
 , buildNpmPackage
 , fetchFromGitHub
+, fetchurl
 , nodejs_22
 , makeWrapper
 , autoPatchelfHook
@@ -16,18 +17,34 @@
 
 buildNpmPackage rec {
   pname = "pi-coding-agent";
-  version = "0.80.10";
+  version = "0.81.1";
 
   src = fetchFromGitHub {
     owner = "earendil-works";
     repo = "pi";
     rev = "v${version}";
-    hash = "sha256-Vs/ndHYzFyfN4CjPV2zMYblLXe9IuM13UrPJI1VsZEQ=";
+    hash = "sha256-xo3uoR7HceOCL3wqoMcacOe8WXP1o7ReAXne5t6Hgao=";
   };
 
   nodejs = nodejs_22;
 
-  npmDepsHash = "sha256-XGvDNH+eilsgc0Z7ITqbitB/9RVc+WuDfCcr1pibNqk=";
+  # Since 0.81.x upstream no longer commits packages/ai/src/providers/data
+  # (per-provider model JSON + .manifest.json) to git; `hydrate:model-data`
+  # fetches it from live APIs (models.dev / OpenRouter / ...) — impossible in
+  # the sandbox and non-reproducible anyway. The npm-published pi-ai tarball
+  # of the SAME version ships that data verbatim under dist/providers/data
+  # (build:offline copies it there at release time), so we vendor it from the
+  # registry as a fixed-output fetch and restore it into src/ in preBuild.
+  # The build's own check:model-data step then verifies every file against
+  # the manifest + committed structure hashes — a stale vendor fails loudly.
+  # On bump: hash = ""; then nix build learns it, or take .dist.integrity
+  # from `curl -s https://registry.npmjs.org/@earendil-works/pi-ai/<VERSION>`.
+  modelData = fetchurl {
+    url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${version}.tgz";
+    hash = "sha512-hzHE7Z8l5mgJk+ke67Lge0rwS2+wbKJrFKl9o5M1R1rh33+cCT7D1AHz1OAtX5wFs90E1/BTGhyJRTUHaMxGvQ==";
+  };
+
+  npmDepsHash = "sha256-lzKQZbnITzgV9koucsMno6f61ubBLYUcwQEXtak1r1s=";
 
   # tsgo (@typescript/native-preview) is a prebuilt Go binary. On Linux its
   # hardcoded loader must be patched before the build invokes it; darwin
@@ -48,37 +65,31 @@ buildNpmPackage rec {
   # future pass could patch canvas out of the workspace + regen the lockfile.
   buildInputs = [ cairo pango libjpeg giflib librsvg pixman ];
 
-  # Two source edits, applied in patchPhase before `npm ci`:
+  # One source edit, applied in patchPhase before `npm ci`:
+  # Neutralize husky (git-hook install) — no .git in the sandbox. Targeted,
+  # NOT --ignore-scripts (which would also skip photon-node / tsgo native
+  # install steps → subtle build break).
   #
-  # 1. Neutralize husky (git-hook install) — no .git in the sandbox. Targeted,
-  #    NOT --ignore-scripts (which would also skip photon-node / tsgo native
-  #    install steps → subtle build break).
-  #
-  # 2. Strip the model-catalog generation from packages/ai's build script.
-  #    Upstream's `build` runs `generate-models && generate-image-models`
-  #    before tsgo; those scripts fetch models.dev / OpenRouter / Vercel AI
-  #    Gateway / NVIDIA NIM. In the network-less sandbox each fetch soft-fails
-  #    (non-strict) to an empty list, but the generators rmSync + overwrite the
-  #    committed, populated catalogs (src/models.generated.ts,
-  #    src/providers/*.models.ts, src/image-models.generated.ts) with empty
-  #    ones — yielding a "green" build that ships a pi with zero models. The
-  #    tag already vendors the fully-populated catalogs, so we drop the two
-  #    generate steps and compile what upstream committed (deterministic,
-  #    offline, no giant models.dev JSON to re-vendor). --replace-fail errors
-  #    loudly if the upstream build string ever drifts.
+  # The model-catalog problem (upstream's `build` fetches models.dev /
+  # OpenRouter / Vercel AI Gateway / NVIDIA NIM and would overwrite the
+  # committed catalogs with empty ones in the network-less sandbox) is solved
+  # since 0.81.x by upstream's own `build:offline` script: it validates the
+  # committed model data (check:model-data, purely local) and compiles it with
+  # tsgo — no network, deterministic. See npmBuildScript below.
   postPatch = ''
     substituteInPlace package.json \
       --replace-fail '"prepare": "husky"' '"prepare": ""'
-
-    substituteInPlace packages/ai/package.json \
-      --replace-fail 'npm run generate-models && npm run generate-image-models && tsgo -p tsconfig.build.json' 'tsgo -p tsconfig.build.json'
   '';
 
-  preBuild = lib.optionalString stdenv.isLinux ''
+  preBuild = ''
+    tar -xzf $modelData -C packages/ai/src/providers \
+      --strip-components=3 package/dist/providers/data
+  '' + lib.optionalString stdenv.isLinux ''
     autoPatchelf node_modules/@typescript
   '';
 
-  npmBuildScript = "build";  # root: tui→ai→agent→coding-agent→orchestrator
+  # root: tui→ai(offline)→agent→storage/sqlite-node→coding-agent→server
+  npmBuildScript = "build:offline";
 
   # coding-agent/dist/cli.js imports sibling workspace packages at runtime;
   # ship the built tree with relative node_modules/@earendil-works/* symlinks

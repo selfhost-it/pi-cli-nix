@@ -29,6 +29,9 @@ Update pi-cli-nix to the latest upstream release.
    a. Set `version` to the new value (without leading `v`).
    b. Set `hash = "";` -> run `nix build . 2>&1` -> find the line containing `got:` and extract the SRI hash (sha256-...=) -> update `hash`.
    c. Set `npmDepsHash = "";` -> run `nix build . 2>&1` -> extract the correct hash from `got:` -> update `npmDepsHash`.
+   d. Update the `modelData` fetchurl hash (vendored pi-ai npm tarball; its URL tracks `version` automatically):
+      curl -s "https://registry.npmjs.org/@earendil-works/pi-ai/<VERSION>" | jq -r .dist.integrity
+      Put the resulting `sha512-...` string into `modelData.hash`.
 
 4. Run `nix build .` — this must succeed with no errors.
 
