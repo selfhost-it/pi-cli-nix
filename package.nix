@@ -17,13 +17,13 @@
 
 buildNpmPackage rec {
   pname = "pi-coding-agent";
-  version = "0.84.1";
+  version = "0.84.2";
 
   src = fetchFromGitHub {
     owner = "earendil-works";
     repo = "pi";
     rev = "v${version}";
-    hash = "sha256-lg+I4S/aAjazjhGZU567ow+rksoNiqOqjHl//TjAMes=";
+    hash = "sha256-d29ft9otYxdHRWYIAX8KMHPpppToX9ME5LbPb1rPcYo=";
   };
 
   nodejs = nodejs_22;
@@ -41,10 +41,10 @@ buildNpmPackage rec {
   # from `curl -s https://registry.npmjs.org/@earendil-works/pi-ai/<VERSION>`.
   modelData = fetchurl {
     url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${version}.tgz";
-    hash = "sha512-wMsAdJMxuNri08vLqTyYVI201DQQezGhPSTkzYsHdw5dYX3rCNwEmSvpaAwhi7ELKI/2tE/CEgSWg/6iRxSgdQ==";
+    hash = "sha512-6MzsrYIYNVlE7SfpbL2yYb67Qo58p/7Q+xWG1RZvoX1P80aRCHSod2/13aFpxkow1lPO2LEh3c495J0Gwmyjig==";
   };
 
-  npmDepsHash = "sha256-tufyZQRPAUeDtiq0UQodbKA/Y9xUAvNT8K+NWFjkeME=";
+  npmDepsHash = "sha256-6J5Efe+6ptCuR3VZojwYPZO8BBnnZsOQ4OAeB64uYOY=";
 
   # tsgo (@typescript/native-preview) is a prebuilt Go binary. On Linux its
   # hardcoded loader must be patched before the build invokes it; darwin
