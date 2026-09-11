@@ -20,7 +20,7 @@ Pi is not yet packaged in nixpkgs. This flake lets you:
 | `package.nix` | Build recipe: fetches the GitHub source, builds the workspace monorepo, ships the tree + `bin/pi` wrapper |
 | `default.nix` | Non-flake entry point (NUR-compatible) |
 | `flake.lock` | Pinned inputs |
-| `update.sh` | Autonomous update workflow driven by Claude Code |
+| `update.sh` | Deterministic local update workflow (no LLM required) |
 | `.gitignore` | Excludes Nix build artifacts and editor files |
 
 ## Quick Start
@@ -101,7 +101,15 @@ nix run .
 5. Run `nix build .` again — it should succeed.
 6. Verify `./result/bin/pi --version`, then commit and push.
 
-The autonomous workflow `./update.sh` performs all of these steps using Claude Code.
+The deterministic updater performs the same workflow without an LLM:
+
+```bash
+./update.sh --check              # report whether an update is available
+./update.sh --dry-run            # resolve and validate an update without changing files or building
+./update.sh --no-push            # update, build, verify and commit locally
+./update.sh --version 0.85.1     # target an explicit version
+./update.sh                      # update, build, verify, commit and push
+```
 
 ## Technical Details
 

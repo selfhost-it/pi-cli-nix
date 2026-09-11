@@ -32,8 +32,12 @@
 
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
+            curl
+            git
+            jq
+            nix
             nixpkgs-fmt
-            nix-prefetch-scripts  # provides the nix-prefetch-url command (no top-level pkgs.nix-prefetch-url attr exists)
+            python3
           ];
         };
       }) // {
