@@ -17,13 +17,13 @@
 
 buildNpmPackage rec {
   pname = "pi-coding-agent";
-  version = "1.1.0";
+  version = "1.2.0";
 
   src = fetchFromGitHub {
     owner = "earendil-works";
     repo = "pi";
     rev = "v${version}";
-    hash = "sha256-lwjspkMGrW+8Fl/yBEDEFsHZJA57OKOhmVQmi6zfej4=";
+    hash = "sha256-IjNJvVxjzRur2foQDWPA5iM9sa3ThBoZU1/LT5pU6jc=";
   };
 
   nodejs = nodejs_22;
@@ -41,10 +41,10 @@ buildNpmPackage rec {
   # from `curl -s https://registry.npmjs.org/@earendil-works/pi-ai/<VERSION>`.
   modelData = fetchurl {
     url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${version}.tgz";
-    hash = "sha512-1T7LAkc/5Bvc0v6w4vAGVdCrli0o/E0pEmYKTnixu95vSFArBjvbhS/G4ZwI0RUePgf0Imcu0VyqlM4EcXxqfw==";
+    hash = "sha512-U5/1zXqfV1on7/9sbez03tT4Ru49Lvfb4+zXSDK3DBKF5cRk6KxvAOTOY3HJ4jimlZth+rs7vbJqN6iBQAoNuQ==";
   };
 
-  npmDepsHash = "sha256-GOh5WG+rRgzoy/yVHY5PoEKJZGQcEGhISrDDJxkP8W4=";
+  npmDepsHash = "sha256-P/KWhkvLjtpWRiwLCHu2iUVyI8nragSnQGWUQNsRhw8=";
 
   # tsgo (@typescript/native-preview) is a prebuilt Go binary. On Linux its
   # hardcoded loader must be patched before the build invokes it; darwin
