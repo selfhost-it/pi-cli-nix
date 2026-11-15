@@ -99,6 +99,9 @@ buildNpmPackage rec {
 
     mkdir -p $out/lib/pi
     cp -a packages package.json package-lock.json node_modules $out/lib/pi/
+    # Workspaces outside packages/ (apps/p2 since 1.5.1) are not shipped, so
+    # their node_modules links dangle and fail nixpkgs' noBrokenSymlinks check.
+    find $out/lib/pi/node_modules -maxdepth 2 -xtype l -delete
 
     makeWrapper ${nodejs}/bin/node $out/bin/pi \
       --add-flags $out/lib/pi/packages/coding-agent/dist/cli.js \
